@@ -36,11 +36,14 @@ lic["indice_desconto_pct"] = (
     (lic["valorEstimado"] - lic["valorHomologado"]) / lic["valorEstimado"] * 100
 ).round(2)
 
+# Remove licitações com desconto inválido (valorEstimado=0 gera -inf/+inf)
+# mantém mediana/min/max confiáveis; desconto_medio_pct vem do agregado
+lic_valido = lic[np.isfinite(lic["indice_desconto_pct"])].copy()
+
 desconto_anual = (
-    lic.groupby("ano")
+    lic_valido.groupby("ano")
     .agg(
         qtd_licitacoes        = ("objeto",            "count"),
-        desconto_medio_pct    = ("indice_desconto_pct","mean"),
         desconto_mediano_pct  = ("indice_desconto_pct","median"),
         desconto_min_pct      = ("indice_desconto_pct","min"),
         desconto_max_pct      = ("indice_desconto_pct","max"),
@@ -50,7 +53,13 @@ desconto_anual = (
     .reset_index()
 )
 
-desconto_anual["desconto_medio_pct"]   = desconto_anual["desconto_medio_pct"].round(2)
+# desconto_medio_pct pelo agregado do ano (robusto a outliers por item)
+# Fórmula: (Σ estimado - Σ homologado) / Σ estimado × 100
+desconto_anual["desconto_medio_pct"] = (
+    (desconto_anual["total_estimado"] - desconto_anual["total_homologado"])
+    / desconto_anual["total_estimado"] * 100
+).round(2)
+
 desconto_anual["desconto_mediano_pct"] = desconto_anual["desconto_mediano_pct"].round(2)
 desconto_anual["economia_total"]       = (
     desconto_anual["total_estimado"] - desconto_anual["total_homologado"]

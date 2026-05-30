@@ -4,60 +4,7 @@ import pandas as pd
 
 RAW_DIR = "data/raw"
 OUTPUT_FILE = "data/licitacoes_final.csv"
-""" 
 
-Como rodar na sua máquina:
-
-    Salva o arquivo passo2_consolidar.py na raiz do projeto (mesma pasta onde está a pasta data/)
-    Abre o terminal nessa pasta e roda:
-
-    python passo2_consolidar.py
-
-
-O que o script faz:
-
-    Lê todos os .json dentro de data/raw/
-    Para cada licitação, percorre a lista itensVencedores e cria uma linha por item
-    Junta tudo num único DataFrame com as colunas: ano, dataPublicacao, modalidade, valorEstimado, valorHomologado, descricao, valorTotalVencedor, valorUnitarioVencedor, valorUnitarioReferencia, quantidade
-    Salva em data/licitacoes_final.csv
-
-Ao final ele imprime quantas linhas foram geradas — se aparecer 20.000+ é porque funcionou direitinho. Qualquer erro que aparecer no terminal, me manda aqui!
-
-
-RODEI RETORNOU
-
-
-
-PS C:\GitHub\Analise_de_Licitacoes> python data/passo2_consolidar.py
-✅ Consolidado! Total de linhas: 110675
-📁 Arquivo salvo em: data/licitacoes_final.csv
-
-Amostra:
-    ano dataPublicacao         modalidade  valorEstimado  valorHomologado                                                     descricao  valorTotalVencedor  valorUnitarioVencedor  valorUnitarioReferencia  quantidade
-0  2015     2015-05-14            Convite            NaN              NaN                                                       MEDALHA             16500.0                   2.75                      3.0      6000.0
-1  2015     2015-05-26  Pregão presencial            NaN              NaN  Tabuleiro e Dama Gigante medindo 4x4 de Nylon, contendo 32 p             44500.0                8900.00                   9000.0         5.0
-2  2015     2015-08-05  Pregão presencial            NaN              NaN                                                 KIT'S PROJETO             44578.0                  14.38                     17.0      3100.0
-PS C:\GitHub\Analise_de_Licitacoes> 
-
-
-
-
-
-Olhando o JSON, o campo valorHomologado existe sim na raiz da licitação — aparece no segundo exemplo que você mandou ("valorHomologado": 108102.21). O primeiro exemplo que você tinha mandado antes simplesmente não tinha esse campo porque era uma licitação mais simples/antiga.
-Então o script precisa:
-
-Tentar pegar valorHomologado direto da raiz
-Se não existir, cair para contratos[0].valor como fallback
-Executou um comando, leu um arquivoExecutou um comando, leu um arquivoO script agora tem a lógica correta:
-
-Primeiro tenta valorHomologado direto na raiz da licitação
-Se não existir (como nas licitações mais antigas/simples), usa contratos[0].valor como fallback
-
-Ao rodar, ele também vai imprimir quantas linhas ficaram com o campo preenchido vs. vazio, então você consegue ver se ainda tem algum caso não coberto.
- 
- No caso A correção acima é do caso 3
- 
- """
 rows = []
 
 for filename in sorted(os.listdir(RAW_DIR)):
@@ -69,34 +16,84 @@ for filename in sorted(os.listdir(RAW_DIR)):
         licitacoes = json.load(f)
 
     for lic in licitacoes:
-        ano = lic.get("anoLicitacao")
-        modalidade = lic.get("modalidade")
-        data_publicacao = lic.get("dataPublicacao")
-        valor_estimado = lic.get("valorEstimado")
-        valor_homologado = lic.get("valorHomologado")
+        ano              = lic.get("anoLicitacao")
+        modalidade       = lic.get("modalidade")
+        data_publicacao  = lic.get("dataPublicacao")
+        data_homologacao = lic.get("dataHomologacao")
+        objeto           = lic.get("objeto")
+        situacao         = lic.get("situacao", "")
+        nome_entidade    = lic.get("nomeEntidade")
+        tipo_objeto      = lic.get("tipoObjeto")
 
         itens = lic.get("itensVencedores", [])
 
+        # valorEstimado = soma dos valorTotalReferencia dos itens
+        valor_estimado = sum(i.get("valorTotalReferencia") or 0 for i in itens)
+
+        # valorHomologado: só preenche se a licitação foi homologada
+        if situacao.strip().upper() == "HOMOLOGADO":
+            valor_homologado = lic.get("valorHomologado")
+            if valor_homologado is None:
+                contratos = lic.get("contratos", [])
+                valor_homologado = contratos[0].get("valor") if contratos else None
+        else:
+            valor_homologado = None
+
+        # mes e trimestre e diaDoAno extraídos de dataPublicacao
+        try:
+            dt = pd.to_datetime(data_publicacao)
+            mes       = dt.month
+            trimestre = (dt.month - 1) // 3 + 1
+            dia_do_ano = dt.day_of_year
+        except Exception:
+            mes = trimestre = dia_do_ano = None
+
         for item in itens:
+            qtd        = item.get("quantidade") or 0
+            unit_ref   = item.get("valorUnitarioReferencia") or 0
+            unit_venc  = item.get("valorUnitarioVencedor") or 0
+            total_ref  = item.get("valorTotalReferencia") or (unit_ref * qtd)
+            total_venc = item.get("valorTotalVencedor") or 0
+
             rows.append({
-                "ano": ano,
-                "dataPublicacao": data_publicacao,
-                "modalidade": modalidade,
-                "valorEstimado": valor_estimado,
-                "valorHomologado": valor_homologado,
-                "descricao": item.get("descricao"),
-                "valorTotalVencedor": item.get("valorTotalVencedor"),
-                "valorUnitarioVencedor": item.get("valorUnitarioVencedor"),
-                "valorUnitarioReferencia": item.get("valorUnitarioReferencia"),
-                "quantidade": item.get("quantidade"),
+                # ── Grupo 1 — diretas ──────────────────────────────────
+                "valorUnitarioVencedor":    unit_venc,
+                "quantidade":               qtd,
+                "valorUnitarioReferencia":  unit_ref,
+                "valorEstimado":            valor_estimado,
+                "valorHomologado":          valor_homologado,
+                "ano":                      ano,
+                "mes":                      mes,        # var 7
+                # ── Metadados extras ───────────────────────────────────
+                "trimestre":                trimestre,  # var 22 (calculada)
+                "diaDoAno":                 dia_do_ano, # var 23 (calculada)
+                "dataPublicacao":           data_publicacao,
+                "dataHomologacao":          data_homologacao,
+                "modalidade":               modalidade,
+                "situacao":                 situacao,
+                "objeto":                   objeto,
+                "nomeEntidade":             nome_entidade,
+                "tipoObjeto":               tipo_objeto,
+                # ── Direto dos itens ───────────────────────────────────
+                "valorTotalReferencia":     total_ref,  # var 12 base
+                "valorTotalVencedor":       total_venc,
+                "descricao":                item.get("descricao"),
+                "unidadeMedida":            item.get("unidadeMedida"),
+                "vencedor":                 item.get("participanteVencedor"),
+                "cnpjVencedor":             item.get("cnpjCpfVencedor"),
             })
 
 df = pd.DataFrame(rows)
 
 os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
-df.to_csv(OUTPUT_FILE, index=False, encoding="utf-8-sig")
+df.to_csv(OUTPUT_FILE, index=False, encoding="utf-8-sig", sep=";")
 
 print(f"✅ Consolidado! Total de linhas: {len(df)}")
 print(f"📁 Arquivo salvo em: {OUTPUT_FILE}")
+print(f"\nDistribuição por situação:")
+print(df["situacao"].value_counts().to_string())
+print(f"\nLinhas com valorHomologado preenchido: {df['valorHomologado'].notna().sum()}")
+print(f"Linhas com valorHomologado vazio:      {df['valorHomologado'].isna().sum()}")
+print(f"\nColunas geradas: {list(df.columns)}")
 print(f"\nAmostra:")
 print(df.head(3).to_string())

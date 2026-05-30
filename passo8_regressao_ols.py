@@ -62,19 +62,57 @@ remover = {
     "valorHomologadoReal",         # transformação linear de valorHomologado
     "economiaItem",                # = valorTotalReferencia - alvo (vazamento)
     "razaoVencedorReferencia",     # derivada direta do alvo (vazamento)
+    # ── vazamentos adicionais identificados em execução ──
+    "logValorTotalVencedor",       # log do próprio alvo → vazamento direto
+    "logValorUnitarioRef",         # duplicata de logValorUnitarioReferencia (nome alternativo)
 }
 
 candidatas = [v for v in bem_corr if v in df.columns and v not in remover and v != alvo]
 
-print(f"Variáveis selecionadas para o modelo ({len(candidatas)}):")
+# ── FALLBACK: se poucas variáveis passaram no filtro |r|>0.3, relaxa para |r|>0.1 ──
+if len(candidatas) < 3:
+    print(f"⚠️  Apenas {len(candidatas)} variável(is) com |r| > 0.3. Relaxando limiar para |r| > 0.1...")
+    variaveis_numericas = df.select_dtypes(include=[np.number]).columns.tolist()
+    variaveis_candidatas_fallback = [
+        v for v in variaveis_numericas
+        if v not in remover and v != alvo and v in df.columns
+    ]
+    df_temp = df[[alvo] + variaveis_candidatas_fallback].dropna()
+    correlacoes_fallback = df_temp.corr()[alvo].drop(alvo).abs()
+    extras = correlacoes_fallback[correlacoes_fallback > 0.1].index.tolist()
+    # adiciona apenas as que ainda não estão em candidatas
+    for v in extras:
+        if v not in candidatas:
+            candidatas.append(v)
+    print(f"   → {len(candidatas)} variáveis após fallback.")
+
+print(f"\nVariáveis selecionadas para o modelo ({len(candidatas)}):")
 for v in candidatas:
     r_val = corr[corr["variavel"] == v]["correlacao_r"].values
-    print(f"  {v:40s}  r = {r_val[0] if len(r_val) else 'N/A'}")
+    r_str = f"{r_val[0]:.4f}" if len(r_val) else "N/A (fallback)"
+    print(f"  {v:40s}  r = {r_str}")
 
 # ── PREPARAR MATRIX X e Y ──────────────────────────────────────────────────────
 df_model = df[[alvo] + candidatas].dropna()
-X = df_model[candidatas]
+X = df_model[candidatas].copy()
 Y = df_model[alvo]
+
+# ── REMOÇÃO ITERATIVA POR VIF (elimina multicolinearidade residual) ───────────
+# Remove a variável com maior VIF até todas ficarem abaixo de 10
+print('\n── Eliminação iterativa por VIF (limiar = 10) ──')
+while X.shape[1] >= 2:
+    vif_iter = pd.Series(
+        [variance_inflation_factor(X.values, i) for i in range(X.shape[1])],
+        index=X.columns
+    )
+    max_vif = vif_iter.max()
+    if max_vif <= 10:
+        break
+    remover_vif = vif_iter.idxmax()
+    print(f"  Removendo '{remover_vif}' (VIF = {max_vif:.2f})")
+    X = X.drop(columns=[remover_vif])
+
+print(f'  → {X.shape[1]} variável(is) restantes após limpeza de VIF.\n')
 
 X_const = sm.add_constant(X)
 
@@ -82,10 +120,15 @@ X_const = sm.add_constant(X)
 modelo = sm.OLS(Y, X_const).fit()
 
 # ── VIF (Variance Inflation Factor) — detecta multicolinearidade residual ──────
-vif_data = pd.DataFrame({
-    "variavel": X.columns,
-    "VIF": [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
-}).sort_values("VIF", ascending=False)
+# VIF requer ao menos 2 variáveis preditoras para calcular correlação entre elas
+if X.shape[1] >= 2:
+    vif_data = pd.DataFrame({
+        "variavel": X.columns,
+        "VIF": [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
+    }).sort_values("VIF", ascending=False)
+else:
+    print("ℹ️  VIF não calculado: modelo com apenas 1 variável preditora (sem multicolinearidade possível).")
+    vif_data = pd.DataFrame({"variavel": X.columns, "VIF": [float("nan")] * X.shape[1]})
 
 # ── MONTAR TABELA DE COEFICIENTES ─────────────────────────────────────────────
 coef_df = pd.DataFrame({

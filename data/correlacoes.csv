@@ -1,0 +1,26 @@
+﻿numero;variavel;correlacao_r;p_valor;significativa;bem_correlacionada;forca;direcao
+1;valorUnitarioVencedor;0.5378;0.0;Sim ✅;Sim ✅;Moderada;Positiva
+2;quantidade;0.0518;0.0;Sim ✅;Não ❌;Fraca;Positiva
+3;valorUnitarioReferencia;0.5141;0.0;Sim ✅;Sim ✅;Moderada;Positiva
+4;valorEstimado;0.0724;0.0;Sim ✅;Não ❌;Fraca;Positiva
+5;valorHomologado;0.2538;0.0;Sim ✅;Não ❌;Fraca;Positiva
+6;ano;0.0275;0.0;Sim ✅;Não ❌;Fraca;Positiva
+7;mes;0.0025;0.3994;Não ❌;Não ❌;Fraca;Positiva
+8;ipca_decimal;-0.0053;0.0805;Não ❌;Não ❌;Fraca;Negativa
+9;ipca_percentual;-0.0053;0.0805;Não ❌;Não ❌;Fraca;Negativa
+10;indiceAcumulado;0.0288;0.0;Sim ✅;Não ❌;Fraca;Positiva
+11;valorTotalVencedorReal;0.9916;0.0;Sim ✅;Sim ✅;Forte;Positiva
+12;valorTotalReferencia;0.823;0.0;Sim ✅;Sim ✅;Forte;Positiva
+13;indiceDesconto;-0.0005;0.8993;Não ❌;Não ❌;Fraca;Negativa
+14;desvioUnitario;-0.1076;0.0;Sim ✅;Não ❌;Fraca;Negativa
+15;desvioUnitarioPerc;-0.0003;0.9183;Não ❌;Não ❌;Fraca;Negativa
+16;economiaTotal;0.0739;0.0;Sim ✅;Não ❌;Fraca;Positiva
+17;economiaTotalPerc;0.0003;0.9183;Não ❌;Não ❌;Fraca;Positiva
+18;logValorTotalVencedor;0.1503;0.0;Sim ✅;Não ❌;Fraca;Positiva
+19;logQuantidade;0.029;0.0;Sim ✅;Não ❌;Fraca;Positiva
+20;logValorUnitarioVencedor;0.1183;0.0;Sim ✅;Não ❌;Fraca;Positiva
+21;logValorUnitarioRef;0.111;0.0;Sim ✅;Não ❌;Fraca;Positiva
+22;trimestre;0.002;0.5049;Não ❌;Não ❌;Fraca;Positiva
+23;diaDoAno;0.0023;0.4466;Não ❌;Não ❌;Fraca;Positiva
+24;quantidadeXipca;0.052;0.0;Sim ✅;Não ❌;Fraca;Positiva
+25;valorRefXipca;0.4882;0.0;Sim ✅;Sim ✅;Moderada;Positiva

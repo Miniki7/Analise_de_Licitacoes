@@ -7,92 +7,81 @@ OUTPUT_FILE = "data/correlacoes.csv"
 
 df = pd.read_csv(INPUT_FILE, sep=";", encoding="utf-8-sig")
 
-# ── VARIÁVEL ALVO ──────────────────────────────────────────────────────────────
 alvo = "valorTotalVencedor"
 
-# ── CRIAR VARIÁVEIS DERIVADAS ──────────────────────────────────────────────────
-# Evita log de zero/negativo
-df["logValorTotalVencedor"]      = np.log1p(df["valorTotalVencedor"].clip(lower=0))
-df["logQuantidade"]              = np.log1p(df["quantidade"].clip(lower=0))
-df["logValorUnitarioVencedor"]   = np.log1p(df["valorUnitarioVencedor"].clip(lower=0))
-df["logValorUnitarioReferencia"] = np.log1p(df["valorUnitarioReferencia"].clip(lower=0))
-df["logValorTotalReferencia"]    = np.log1p(df["valorTotalReferencia"].clip(lower=0))
-
-# Índice de desconto: quanto o vencedor ficou abaixo da referência (0 a 1)
-df["indiceDesconto"] = (
-    (df["valorUnitarioReferencia"] - df["valorUnitarioVencedor"])
-    / df["valorUnitarioReferencia"].replace(0, np.nan)
-).fillna(0)
-
-# Economia gerada no item
-df["economiaItem"] = df["valorTotalReferencia"] - df["valorTotalVencedor"]
-
-# Valor unitário × índice acumulado
-df["valorUnitarioCorrigido"] = df["valorUnitarioVencedor"] * df["indiceAcumulado"]
-
-# Razão vencedor/referência (quanto o vencedor representa da referência)
-df["razaoVencedorReferencia"] = (
-    df["valorTotalVencedor"] / df["valorTotalReferencia"].replace(0, np.nan)
-).fillna(0)
-
-# Dummy: ano codificado como número (tendência temporal)
-df["anoNumerico"] = df["ano"].astype(int)
-
-# Variáveis dummies de modalidade (top modalidades viram 0/1)
-top_modalidades = df["modalidade"].value_counts().head(5).index
-for mod in top_modalidades:
-    col = "modal_" + mod.lower().replace(" ", "_").replace("ã", "a").replace("ô", "o")[:20]
-    df[col] = (df["modalidade"] == mod).astype(int)
-
-# ── LISTA DE CANDIDATAS ────────────────────────────────────────────────────────
+# ── AS 25 VARIÁVEIS CANDIDATAS (exatamente as definidas no trabalho) ───────────
 candidatas = [
-    # Originais numéricas
-    "quantidade",
-    "valorUnitarioVencedor",
-    "valorUnitarioReferencia",
-    "valorTotalReferencia",
-    "valorUnitarioVencedorReal",
-    "valorUnitarioReferenciaReal",
-    "valorTotalVencedorReal",
-    "valorEstimado",
-    "valorEstimadoReal",
-    "ipca_percentual",
-    "ipca_decimal",
-    "indiceAcumulado",
-    "anoNumerico",
-    # Derivadas
-    "logQuantidade",
-    "logValorUnitarioVencedor",
-    "logValorUnitarioReferencia",
-    "logValorTotalReferencia",
-    "indiceDesconto",
-    "economiaItem",
-    "valorUnitarioCorrigido",
-    "razaoVencedorReferencia",
-] + [c for c in df.columns if c.startswith("modal_")]
+    # Grupo 1 — diretas
+    "valorUnitarioVencedor",    # 1
+    "quantidade",               # 2
+    "valorUnitarioReferencia",  # 3
+    "valorEstimado",            # 4
+    "valorHomologado",          # 5
+    "ano",                      # 6
+    "mes",                      # 7
+    "ipca_decimal",             # 8
+    "ipca_percentual",          # 9
+    # Grupo 2 — derivadas
+    "indiceAcumulado",          # 10
+    "valorTotalVencedorReal",   # 11
+    "valorTotalReferencia",     # 12
+    "indiceDesconto",           # 13
+    "desvioUnitario",           # 14
+    "desvioUnitarioPerc",       # 15
+    "economiaTotal",            # 16
+    "economiaTotalPerc",        # 17
+    "logValorTotalVencedor",    # 18
+    "logQuantidade",            # 19
+    "logValorUnitarioVencedor", # 20
+    "logValorUnitarioRef",      # 21
+    "trimestre",                # 22
+    "diaDoAno",                 # 23
+    "quantidadeXipca",          # 24
+    "valorRefXipca",            # 25
+]
 
-# Remove duplicatas e a própria alvo
-candidatas = [c for c in dict.fromkeys(candidatas) if c != alvo and c in df.columns]
+# Confirma quais estão presentes
+faltando = [v for v in candidatas if v not in df.columns]
+if faltando:
+    print(f"⚠️  Variáveis faltando no CSV: {faltando}")
+    print("   Verifique se os passos 2, 3 e 4 foram rodados corretamente.")
+
+candidatas = [v for v in candidatas if v in df.columns and v != alvo]
 
 # ── CALCULAR CORRELAÇÕES ───────────────────────────────────────────────────────
 resultados = []
 alvo_serie = df[alvo].dropna()
 
-for var in candidatas:
+for i, var in enumerate(candidatas, 1):
     serie = df[var].dropna()
     idx_comum = alvo_serie.index.intersection(serie.index)
     if len(idx_comum) < 30:
+        resultados.append({
+            "numero": i, "variavel": var,
+            "correlacao_r": None, "p_valor": None,
+            "significativa": "N/A — poucos dados",
+            "bem_correlacionada": "N/A",
+            "forca": "N/A", "direcao": "N/A",
+        })
         continue
     x = alvo_serie.loc[idx_comum]
     y = serie.loc[idx_comum]
     if y.std() == 0:
+        resultados.append({
+            "numero": i, "variavel": var,
+            "correlacao_r": 0.0, "p_valor": 1.0,
+            "significativa": "Não ❌ (variância zero)",
+            "bem_correlacionada": "Não ❌",
+            "forca": "Nenhuma", "direcao": "N/A",
+        })
         continue
     r, p = stats.pearsonr(x, y)
     resultados.append({
-        "variavel":         var,
-        "correlacao_r":     round(r, 4),
-        "p_valor":          round(p, 4),
-        "significativa":    "Sim ✅" if p < 0.05 else "Não ❌",
+        "numero":             i,
+        "variavel":           var,
+        "correlacao_r":       round(r, 4),
+        "p_valor":            round(p, 4),
+        "significativa":      "Sim ✅" if p < 0.05 else "Não ❌",
         "bem_correlacionada": "Sim ✅" if abs(r) > 0.3 else "Não ❌",
         "forca": (
             "Forte"          if abs(r) >= 0.70 else
@@ -103,22 +92,22 @@ for var in candidatas:
         "direcao": "Positiva" if r > 0 else "Negativa",
     })
 
-resultado_df = pd.DataFrame(resultados).sort_values("correlacao_r", key=abs, ascending=False)
+resultado_df = pd.DataFrame(resultados)
+resultado_df_sorted = resultado_df.dropna(subset=["correlacao_r"]).sort_values(
+    "correlacao_r", key=abs, ascending=False
+)
 
-# ── SALVAR ─────────────────────────────────────────────────────────────────────
 resultado_df.to_csv(OUTPUT_FILE, index=False, encoding="utf-8-sig", sep=";")
 
-# ── RELATÓRIO NO TERMINAL ──────────────────────────────────────────────────────
+# ── RELATÓRIO ─────────────────────────────────────────────────────────────────
 bem_corr = resultado_df[resultado_df["bem_correlacionada"] == "Sim ✅"]
-nao_corr = resultado_df[resultado_df["bem_correlacionada"] == "Não ❌"]
 
 print(f"✅ Correlações calculadas!")
 print(f"📁 Arquivo salvo em: {OUTPUT_FILE}")
 print(f"\n{'='*65}")
-print(f"  Total de variáveis testadas : {len(resultado_df)}")
-print(f"  Bem correlacionadas (|r|>0.3): {len(bem_corr)}  {'✅ REQUISITO ATINGIDO' if len(bem_corr) >= 15 else '❌ ABAIXO DE 15 — criar mais variáveis'}")
+print(f"  Total de variáveis testadas  : {len(resultado_df)}")
+print(f"  Bem correlacionadas (|r|>0.3): {len(bem_corr)}  "
+      f"{'✅ REQUISITO ATINGIDO' if len(bem_corr) >= 15 else '❌ ABAIXO DE 15'}")
 print(f"{'='*65}")
-print(f"\n📊 RANKING COMPLETO:")
-print(resultado_df.to_string(index=False))
-print(f"\n📌 BEM CORRELACIONADAS ({len(bem_corr)}):")
-print(bem_corr[["variavel","correlacao_r","forca","direcao","significativa"]].to_string(index=False))
+print(f"\n📊 RANKING POR FORÇA DE CORRELAÇÃO:")
+print(resultado_df_sorted[["numero","variavel","correlacao_r","p_valor","forca","significativa","bem_correlacionada"]].to_string(index=False))

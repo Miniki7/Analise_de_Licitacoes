@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise de Licitações — Criciúma/SC 2015–2025</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f6f9;color:#1a1a2e;min-height:100vh}
+.topbar{background:#0c447c;color:#fff;padding:16px 32px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:17px;font-weight:500;letter-spacing:.01em}
+.topbar p{font-size:12px;opacity:.7;margin-top:2px}
+.badge{background:rgba(255,255,255,.18);color:#fff;font-size:11px;padding:3px 10px;border-radius:20px;margin-left:10px;vertical-align:middle}
+.loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:12px;color:#666}
+.spinner{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#185FA5;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dash{padding:24px 28px;display:none}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:#fff;border-radius:10px;padding:16px 18px;border:0.5px solid #e8e8e8}
+.kpi-icon{font-size:20px;margin-bottom:8px;opacity:.6}
+.kpi-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.kpi-value{font-size:24px;font-weight:600;color:#1a1a2e;line-height:1}
+.kpi-sub{font-size:11px;color:#888;margin-top:5px}
+.kpi-pos{color:#1D9E75;font-weight:500}
+.kpi-neg{color:#D85A30;font-weight:500}
+.section{margin-bottom:28px}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.section-title{font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em}
+.section-line{flex:1;height:0.5px;background:#e0e0e0}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chart-row.full{grid-template-columns:1fr}
+.chart-row.three{grid-template-columns:2fr 1fr}
+.card{background:#fff;border-radius:12px;padding:18px 20px;border:0.5px solid #e8e8e8}
+.card-title{font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:3px}
+.card-sub{font-size:11px;color:#aaa;margin-bottom:14px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#666}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.divider{border:none;border-top:0.5px solid #e8e8e8;margin:8px 0 24px}
+
+/* Sazonalidade */
+.sazon-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;align-items:end}
+.sazon-col{display:flex;flex-direction:column;align-items:center;gap:3px}
+.sazon-bar-wrap{width:100%;height:80px;display:flex;align-items:flex-end;justify-content:center}
+.sazon-bar{width:80%;border-radius:3px 3px 0 0}
+.sazon-lbl{font-size:9px;color:#999;text-align:center}
+.sazon-val{font-size:9px;font-weight:600;color:#555}
+.sazon-legend{display:flex;gap:12px;margin-top:10px;font-size:10px;color:#888}
+.sazon-legend span{display:flex;align-items:center;gap:4px}
+.sazon-legend-dot{width:8px;height:8px;border-radius:2px}
+
+/* Desconto bars */
+.desc-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.desc-ano{font-size:11px;color:#888;width:32px;text-align:right}
+.desc-bar-wrap{flex:1;background:#f0f0f0;border-radius:4px;height:16px;position:relative;overflow:hidden}
+.desc-bar{height:16px;border-radius:4px;transition:width .5s}
+.desc-avg-line{position:absolute;top:0;bottom:0;width:2px;background:#888;opacity:.5}
+.desc-val{font-size:11px;font-weight:600;width:42px;color:#1a1a2e}
+.desc-legend{display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:#888}
+
+/* Nota */
+.nota{background:#fff8e1;border-left:3px solid #EF9F27;border-radius:0 8px 8px 0;padding:10px 14px;margin-top:12px;font-size:11px;color:#666;line-height:1.5}
+.nota strong{color:#BA7517}
+
+/* Insights */
+.insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.insight{background:#fff;border-radius:10px;padding:14px 16px;border:0.5px solid #e8e8e8;border-left:3px solid #185FA5}
+.insight p{font-size:12px;color:#666;line-height:1.55}
+.insight strong{color:#1a1a2e;font-weight:600}
+
+@media(max-width:640px){.chart-row,.chart-row.three{grid-template-columns:1fr}.dash{padding:16px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Análise de licitações públicas — Criciúma/SC <span class="badge">2015–2025</span></h1>
+    <p>Trabalho acadêmico · Análise estatística com deflacionamento IPCA</p>
+  </div>
+  <div style="font-size:11px;opacity:.6;text-align:right" id="ts"></div>
+</div>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <p style="font-size:13px">Carregando dados dos CSVs...</p>
+</div>
+
+<div class="dash" id="dash">
+
+  <!-- KPIs -->
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="divider"></div>
+
+  <!-- Evolução temporal -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Evolução temporal</span>
+      <div class="section-line"></div>
+    </div>
+    <div class="chart-row full">
+      <div class="card">
+        <div class="card-title">Valor médio por item — nominal vs real deflacionado</div>
+        <div class="card-sub">Valores reais em poder de compra de 2015 · barras = IPCA anual (eixo direito)</div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#185FA5"></span>Nominal</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#D85A30;opacity:.8"></span>Real (deflac.)</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#c8c8c8"></span>IPCA %</span>
+        </div>
+        <div style="position:relative;height:260px"><canvas id="c-evolucao" role="img" aria-label="Evolução do valor médio nominal e real por item 2015 a 2025"></canvas></div>
+      </div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title">Quantidade de itens licitados por ano</div>
+        <div class="card-sub">Total de itens vencedores registrados</div>
+        <div style="position:relative;height:190px"><canvas id="c-qtd" role="img" aria-label="Quantidade de itens por ano"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Volume financeiro total por ano</div>
+        <div class="card-sub">Soma dos valores homologados (R$ milhões)</div>
+        <div style="position:relative;height:190px"><canvas id="c-volume" role="img" aria-label="Volume financeiro total por ano"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Padrões orçamentários -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Padrões orçamentários</span>
+      <div class="section-line"></div>
+    </div>
+    <div class="chart-row three">
+      <div class="card">
+        <div class="card-title">Índice de desconto médio por ano</div>
+        <div class="card-sub">% de redução entre valor estimado e homologado</div>
+        <div class="desc-legend">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#185FA5;display:inline-block"></span>Acima da média</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#D85A30;display:inline-block"></span>Abaixo da média</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:2px;height:10px;background:#888;display:inline-block"></span>Média histórica</span>
+        </div>
+        <div id="desc-bars"></div>
+        <div class="nota">
+          <strong>⚠ Nota sobre 2024 (75,5%):</strong> valor atípico causado por uma ou duas licitações de grande porte com estimativas muito acima do mercado. O valor estimado total de 2024 foi R$ 1,6 bilhão, mas o homologado ficou em R$ 393 milhões — matematicamente correto, mas não representa o padrão histórico da prefeitura.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Sazonalidade por mês</div>
+        <div class="card-sub">Distribuição de licitações ao longo do ano</div>
+        <div class="sazon-grid" id="sazon-grid"></div>
+        <div class="sazon-legend" id="sazon-legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Insights -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Principais insights</span>
+      <div class="section-line"></div>
+    </div>
+    <div class="insight-grid" id="insight-grid"></div>
+  </div>
+
+  <div style="text-align:center;font-size:11px;color:#bbb;padding:16px 0">
+    Dados: API Prefeitura de Criciúma/SC · Inflação: IBGE/IPCA · Análise estatística com deflacionamento base 2015
+  </div>
+</div>
+
+<script>
+const SEP = ';';
+const FILES = {
+  agregado: 'data/agregado_anual.csv',
+  desconto: 'data/padrao1_desconto_anual.csv',
+  sazon:    'data/padrao3_sazonalidade.csv'
+};
+
+function loadCSV(path){
+  return new Promise((res,rej)=>{
+    Papa.parse(path,{
+      download:true, header:true, delimiter:SEP, skipEmptyLines:true,
+      complete: r => res(r.data),
+      error: e => rej(e)
+    });
+  });
+}
+
+function n(v,dec=0){ return Number(Number(v).toFixed(dec)); }
+function brl(v){ return 'R$ '+(v>=1e9?(v/1e9).toFixed(2)+'B':v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(1)+'K':v.toFixed(0)); }
+
+const gridColor = 'rgba(0,0,0,0.05)';
+const textColor = '#888';
+const baseOpts = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false}},
+  scales:{
+    x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}},
+    y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}}
+  }
+};
+
+async function init(){
+  try{
+    const [agData, desData, sazData] = await Promise.all([
+      loadCSV(FILES.agregado), loadCSV(FILES.desconto), loadCSV(FILES.sazon)
+    ]);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('dash').style.display = 'block';
+    document.getElementById('ts').innerHTML = `Dados carregados<br>${new Date().toLocaleString('pt-BR')}`;
+
+    const anos    = agData.map(r=>+r.ano);
+    const nominal = agData.map(r=>n(r.valor_medio_nominal,2));
+    const real    = agData.map(r=>n(r.valor_medio_real,2));
+    const ipca    = agData.map(r=>n(r.ipca_percentual,2));
+    const qtd     = agData.map(r=>+r.qtd_itens);
+    const volM    = agData.map(r=>n(r.valor_total_nominal/1e6,1));
+
+    const totalItens = qtd.reduce((a,b)=>a+b,0);
+    const totalVol   = agData.reduce((a,r)=>a+n(r.valor_total_nominal),0);
+    const totalReal  = agData.reduce((a,r)=>a+n(r.valor_total_real),0);
+    const tickNom25  = nominal[nominal.length-1];
+    const tickReal25 = real[real.length-1];
+    const tickNom15  = nominal[0];
+    const crescReal  = ((tickReal25/tickNom15)-1)*100;
+    const ipcaAcum   = (1.6479-1)*100;
+
+    const descMedios = desData.map(r=>n(r.desconto_medio_pct,2));
+    const mediaDesc  = n(descMedios.reduce((a,b)=>a+b,0)/descMedios.length,1);
+    const econTotal  = desData.reduce((a,r)=>a+n(r.economia_total),0);
+
+    // KPIs
+    const kpis = [
+      {icon:'📋',label:'Total de itens',value:totalItens.toLocaleString('pt-BR'),sub:'registros 2015–2025'},
+      {icon:'💰',label:'Volume nominal total',value:brl(totalVol),sub:'valor acumulado'},
+      {icon:'📉',label:'Ticket médio 2025',value:brl(tickNom25),sub:`vs ${brl(tickNom15)} em 2015`},
+      {icon:'📊',label:'Ticket real 2025',value:brl(tickReal25),sub:`<span class="kpi-pos">+${crescReal.toFixed(0)}%</span> real desde 2015`},
+      {icon:'🎯',label:'Desconto médio',value:mediaDesc+'%',sub:'média histórica'},
+      {icon:'💡',label:'Economia gerada',value:brl(econTotal),sub:'estimado vs homologado'},
+    ];
+    document.getElementById('kpi-grid').innerHTML = kpis.map(k=>`
+      <div class="kpi">
+        <div class="kpi-icon">${k.icon}</div>
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value">${k.value}</div>
+        <div class="kpi-sub">${k.sub}</div>
+      </div>`).join('');
+
+    // Chart 1 — evolução
+    new Chart(document.getElementById('c-evolucao'),{
+      data:{labels:anos,datasets:[
+        {type:'bar',data:ipca,backgroundColor:'rgba(180,180,180,0.3)',yAxisID:'y2',order:3,label:'IPCA %'},
+        {type:'line',data:nominal,borderColor:'#185FA5',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#185FA5',yAxisID:'y',order:1,tension:0.35,label:'Nominal'},
+        {type:'line',data:real,borderColor:'#D85A30',backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#D85A30',borderDash:[6,3],yAxisID:'y',order:2,tension:0.35,label:'Real'}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10},autoSkip:false,maxRotation:0}},
+          y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10},callback:v=>'R$'+Math.round(v/1000)+'K'},position:'left'},
+          y2:{grid:{display:false},ticks:{color:textColor,font:{size:10},callback:v=>v+'%'},position:'right'}
+        }
+      }
+    });
+
+    // Chart 2 — qtd
+    new Chart(document.getElementById('c-qtd'),{
+      type:'bar',
+      data:{labels:anos,datasets:[{data:qtd,backgroundColor:'#185FA5',borderRadius:5}]},
+      options:{...baseOpts,scales:{
+        x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10},autoSkip:false,maxRotation:0}},
+        y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10},callback:v=>v.toLocaleString('pt-BR')}}
+      }}
+    });
+
+    // Chart 3 — volume
+    new Chart(document.getElementById('c-volume'),{
+      type:'bar',
+      data:{labels:anos,datasets:[{data:volM,backgroundColor:'#1D9E75',borderRadius:5}]},
+      options:{...baseOpts,scales:{
+        x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10},autoSkip:false,maxRotation:0}},
+        y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10},callback:v=>'R$'+v+'M'}}
+      }}
+    });
+
+    // Desconto bars
+    const maxDesc = Math.max(...descMedios);
+    const descAnos = desData.map(r=>+r.ano);
+    let descHTML = '';
+    desData.forEach((r,i)=>{
+      const v = n(r.desconto_medio_pct,1);
+      const pct = (v/maxDesc*100).toFixed(1);
+      const avgPct = (mediaDesc/maxDesc*100).toFixed(1);
+      const cor = v >= mediaDesc ? '#185FA5' : '#D85A30';
+      descHTML += `<div class="desc-row">
+        <span class="desc-ano">${r.ano}</span>
+        <div class="desc-bar-wrap">
+          <div class="desc-bar" style="width:${pct}%;background:${cor}"></div>
+          <div class="desc-avg-line" style="left:${avgPct}%"></div>
+        </div>
+        <span class="desc-val">${v}%</span>
+      </div>`;
+    });
+    document.getElementById('desc-bars').innerHTML = descHTML;
+
+    // Sazonalidade
+    const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Dez'];
+    const triCores = {'Q1 (Jan-Mar)':'#185FA5','Q2 (Abr-Jun)':'#1D9E75','Q3 (Jul-Set)':'#888780','Q4 (Out-Dez)':'#D85A30'};
+    const maxSaz = Math.max(...sazData.map(r=>+r.qtd_licitacoes));
+    let sazHTML = '';
+    sazData.forEach(r=>{
+      const h = Math.round((+r.qtd_licitacoes/maxSaz)*72);
+      const cor = triCores[r.trimestre]||'#888';
+      sazHTML += `<div class="sazon-col">
+        <div class="sazon-bar-wrap"><div class="sazon-bar" style="height:${h}px;background:${cor}"></div></div>
+        <span class="sazon-lbl">${r.nome_mes.substring(0,3)}</span>
+        <span class="sazon-val">${(+r.qtd_licitacoes/1000).toFixed(1)}K</span>
+      </div>`;
+    });
+    document.getElementById('sazon-grid').innerHTML = sazHTML;
+    document.getElementById('sazon-legend').innerHTML = Object.entries(triCores).map(([k,v])=>
+      `<span><span class="sazon-legend-dot" style="background:${v}"></span>${k.replace(' (','<br>').replace(')','')}</span>`
+    ).join('');
+
+    // Insights dinâmicos
+    const anoMaiorQtd   = anos[qtd.indexOf(Math.max(...qtd))];
+    const anoMaiorDesc  = descAnos[descMedios.indexOf(Math.max(...descMedios))];
+    const mesPico       = sazData.reduce((a,b)=>+b.qtd_licitacoes>+a.qtd_licitacoes?b:a);
+    const gastoProv     = (1000000*(1-mediaDesc/100)).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+    const insights = [
+      `<strong>Crescimento real expressivo</strong><br>O ticket médio real cresceu +${crescReal.toFixed(0)}% de 2015 a 2025, contra inflação acumulada de ${ipcaAcum.toFixed(1)}% no período.`,
+      `<strong>Ano de maior volume</strong><br>${anoMaiorQtd} registrou o maior número de itens licitados (${Math.max(...qtd).toLocaleString('pt-BR')}), coincidindo com retomada pós-pandemia.`,
+      `<strong>Regra orçamentária</strong><br>Com desconto médio histórico de ${mediaDesc}%, para R$ 1.000.000 estimado o gasto provável é de ${gastoProv}.`,
+      `<strong>Pico de sazonalidade</strong><br>${mesPico.nome_mes} concentra o maior volume mensal com ${(+mesPico.qtd_licitacoes).toLocaleString('pt-BR')} licitações (${mesPico.pct_do_total}% do total).`,
+    ];
+    document.getElementById('insight-grid').innerHTML = insights.map(i=>
+      `<div class="insight"><p>${i}</p></div>`
+    ).join('');
+
+  } catch(e){
+    document.getElementById('loading').innerHTML =
+      `<p style="color:#c0392b;font-size:13px">Erro ao carregar os CSVs: ${e}<br><br>
+      Certifique-se de abrir o dashboard em um servidor local.<br>
+      No terminal: <code>python -m http.server 8080</code><br>
+      Depois acesse: <a href="http://localhost:8080/dashboard.html">http://localhost:8080/dashboard.html</a></p>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
