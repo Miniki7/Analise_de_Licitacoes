@@ -141,16 +141,25 @@ print(f"{'='*65}")
 print(f"\n📊 RANKING POR FORÇA DE CORRELAÇÃO:")
 print(resultado_df_sorted[["numero","variavel","correlacao_r","p_valor","forca","significativa","bem_correlacionada"]].to_string(index=False))
 
-# ── HEATMAP DE CORRELAÇÃO DE PEARSON ──────────────────────────────────────────
-vars_validas = resultado_df.dropna(subset=["correlacao_r"])["variavel"].tolist()
-cols_heatmap = [alvo] + vars_validas
-cols_heatmap = [c for c in cols_heatmap if c in df.columns]
+# ── HEATMAP DE CORRELAÇÃO DE PEARSON (Top 25 variáveis) ───────────────────────
 
-corr_matrix = df[cols_heatmap].corr(method="pearson")
+# 1. Pega as 25 variáveis mais correlacionadas direto do resultado_df
+top15_vars = (
+    resultado_df
+    .dropna(subset=["correlacao_r"])
+    .assign(abs_r=lambda x: x["correlacao_r"].abs())
+    .sort_values("abs_r", ascending=False)
+    .head(15)                          # ← alterado
+    ["variavel"]
+    .tolist()
+)
 
-n = len(cols_heatmap)
-fig_w = max(20, n * 0.55)
-fig_h = max(16, n * 0.45)
+cols_top15 = [alvo] + [v for v in top15_vars if v in df.columns]
+corr_matrix = df[cols_top15].corr(method="pearson")
+
+n = len(cols_top15)
+fig_w = max(12, n * 0.55)
+fig_h = max(10, n * 0.45)
 
 fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
@@ -170,7 +179,7 @@ sns.heatmap(
 )
 
 ax.set_title(
-    f"Mapa de Calor — Correlação de Pearson\nalvo: {alvo}  |  {n} variáveis",
+    f"Mapa de Calor — Correlação de Pearson\nalvo: {alvo}  |  Top 15 variáveis mais correlacionadas",
     fontsize=14, fontweight="bold", pad=18
 )
 ax.tick_params(axis="x", labelsize=8, rotation=45)
@@ -181,6 +190,7 @@ plt.savefig(HEATMAP_FILE, dpi=150, bbox_inches="tight")
 plt.close()
 
 print(f"\n🖼️  Heatmap salvo em: {HEATMAP_FILE}")
+print(f"   Variáveis no heatmap: {len(cols_top15)} ({alvo} + top 15)")
 """ import pandas as pd
 import numpy as np
 from scipy import stats

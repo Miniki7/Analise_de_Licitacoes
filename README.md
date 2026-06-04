@@ -25,7 +25,17 @@ projeto/
 │   │   ├── licitacoes_2016.json
 │   │   └── ... até licitacoes_2025.json
 │   │
-│   ├── ipca_anual.csv                    # IPCA histórico por ano (2015–2025)
+│   ├── graficos/                         # Gráficos PNG gerados pelo passo10 (criada automaticamente)
+│   │   ├── evolucao_valores.png
+│   │   ├── correlacao_ipca.png
+│   │   ├── padroes_orcamentarios.png
+│   │   ├── gastos_por_entidade.png
+│   │   ├── sazonalidade_valor_quantidade.png
+│   │   ├── desconto_por_modalidade.png
+│   │   ├── distribuicao_tipo_objeto.png
+│   │   └── previsao_ols_2026_2028.png
+│   │
+│   ├── ipca_anual.csv                    # IPCA histórico por ano (2015–2025) ⚠️ NÃO APAGAR
 │   ├── licitacoes_final.csv              # Tabela consolidada (1 linha por item vencedor)
 │   ├── licitacoes_com_ipca.csv           # Após JOIN com IPCA pelo ano
 │   ├── licitacoes_deflacionadas.csv      # Com as 48 variáveis derivadas
@@ -37,10 +47,7 @@ projeto/
 │   ├── padrao1_desconto_anual.csv        # Índice de desconto por ano
 │   ├── padrao2_itens_recorrentes.csv     # Itens recorrentes vs IPCA acumulado
 │   ├── padrao3_sazonalidade.csv          # Sazonalidade por mês de publicação
-│   ├── previsao_2026_2028.csv            # Previsão OLS com intervalos de confiança
-│   ├── evolucao_valores.png              # Gráfico 1 — nominal vs real + IPCA
-│   ├── correlacao_ipca.png               # Gráfico 2 — scatter IPCA vs crescimento
-│   └── padroes_orcamentarios.png         # Gráfico 3 — desconto por ano
+│   └── previsao_2026_2028.csv            # Previsão OLS com intervalos de confiança
 │
 ├── passo2_consolidar.py        # Consolida JSONs → CSV (1 linha por item)
 ├── passo3_join_ipca.py         # JOIN com IPCA pelo ano
@@ -50,7 +57,7 @@ projeto/
 ├── passo7_significancia.py     # Testes de significância + textos interpretativos
 ├── passo8_regressao_ols.py     # Regressão OLS + VIF
 ├── passo9_padroes.py           # Padrões: desconto, itens recorrentes, sazonalidade
-├── passo10_graficos.py         # Gráficos PNG para apresentação
+├── passo10_graficos.py         # Gráficos PNG → salvos em data/graficos/
 ├── passo11_previsao.py         # Previsão OLS 2026–2028 com intervalos
 ├── passo12_estimativas.py      # Estimativas pontuais e intervalares
 │
@@ -71,12 +78,18 @@ projeto/
 
 ### 2. Criar e ativar o ambiente virtual
 
-É recomendado usar um ambiente virtual para isolar as dependências do projeto.
+Antes de instalar qualquer dependência, crie um ambiente virtual para isolar o projeto:
 
-**Windows:**
+**Windows (PowerShell):**
 ```bash
 python -m venv venv
-venv\Scripts\activate
+.\venv\Scripts\Activate.ps1
+```
+
+**Windows (CMD):**
+```bash
+python -m venv venv
+venv\Scripts\activate.bat
 ```
 
 **Linux / macOS:**
@@ -85,19 +98,22 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-> Para desativar o ambiente virtual quando terminar, execute `deactivate`.
+> Após ativar, você verá `(venv)` no início do terminal, confirmando que o ambiente está ativo.
+> Para desativar quando terminar, execute `deactivate`.
 
 ### 3. Instalar dependências
 
-Com o ambiente virtual ativo:
+Com o ambiente virtual **ativo**:
 
 ```bash
 pip install -r requirements.txt
 ```
 
+> ⚠️ Não pule o passo do ambiente virtual — instalar sem ele pode conflitar com pacotes do sistema.
+
 ### 4. Ordem de execução dos scripts
 
-> ⚠️ Os scripts dependem uns dos outros — execute **nessa ordem**.
+Execute **um por vez**, nessa ordem, aguardando cada um terminar antes de rodar o próximo:
 
 ```bash
 python passo2_consolidar.py        # Consolida os JSONs em CSV
@@ -108,14 +124,27 @@ python passo6_correlacoes.py       # Correlações de Pearson
 python passo7_significancia.py     # Testes de significância
 python passo8_regressao_ols.py     # Regressão OLS
 python passo9_padroes.py           # Padrões orçamentários
-python passo10_previsao.py         # Previsão 2026–2028
-python passo11_estimativas.py      # Estimativas pontuais e intervalares
-python passo12_graficos.py         # Gráficos para apresentação
+python passo10_graficos.py         # Gráficos → salvos em data/graficos/
+python passo11_previsao.py         # Previsão 2026–2028 com intervalos
+python passo12_estimativas.py      # Estimativas pontuais e intervalares
 ```
 
 > O Passo 1 (extração da API) já foi executado e os JSONs estão em `data/raw/`.
 
-### 5. Abrir o dashboard
+### 5. Regenerar os arquivos do zero
+
+Caso queira reprocessar tudo do início, os únicos arquivos/pastas que precisam ser preservados são:
+
+```
+data/
+├── raw/            ← JSONs brutos da API — NÃO APAGAR
+├── ipca_anual.csv  ← IPCA histórico manual — NÃO APAGAR
+└── graficos/       ← criada automaticamente pelo passo10, pode apagar se quiser
+```
+
+Todos os demais CSVs e PNGs são gerados automaticamente ao rodar os passos em ordem.
+
+### 6. Abrir o dashboard
 
 O `dashboard.html` lê os CSVs diretamente — por isso precisa de um servidor local:
 
@@ -142,7 +171,7 @@ Depois acesse no navegador: **http://localhost:8080/dashboard.html**
 | 7 | `passo7_significancia.py` | Testes p-valor + textos prontos para o trabalho |
 | 8 | `passo8_regressao_ols.py` | Regressão OLS com VIF e remoção iterativa de multicolinearidade |
 | 9 | `passo9_padroes.py` | Padrões: desconto, itens recorrentes vs IPCA, sazonalidade |
-| 10 | `passo10_graficos.py` | Gráficos PNG para apresentação |
+| 10 | `passo10_graficos.py` | 8 gráficos PNG salvos em `data/graficos/` |
 | 11 | `passo11_previsao.py` | Previsão OLS 2026–2028 com intervalos de confiança e predição |
 | 12 | `passo12_estimativas.py` | Estimativas pontuais (x̄) e intervalares (IC 90/95/99%) |
 
@@ -246,5 +275,5 @@ Depois acesse no navegador: **http://localhost:8080/dashboard.html**
 
 ## 👥 Autores
 
-Trabalho acadêmico — Análise de Dados Públicos
+Trabalho acadêmico — Análise de Dados Públicos  
 Criciúma/SC · 2025

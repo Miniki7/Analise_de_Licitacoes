@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from matplotlib.patches import Patch
 from scipy import stats
+import os
+os.makedirs("data/graficos", exist_ok=True)
 
 AGG_FILE        = "data/agregado_anual.csv"
 DESCONTO_FILE   = "data/padrao1_desconto_anual.csv"
@@ -23,14 +25,14 @@ SAZON_FILE      = "data/padrao3_sazonalidade.csv"
 LIC_FILE        = "data/licitacoes_deflacionadas.csv"
 PREV_FILE       = "data/previsao_2026_2028.csv"
 
-OUT_1 = "data/evolucao_valores.png"
-OUT_2 = "data/correlacao_ipca.png"
-OUT_3 = "data/padroes_orcamentarios.png"
-OUT_4 = "data/gastos_por_entidade.png"
-OUT_5 = "data/sazonalidade_valor_quantidade.png"
-OUT_6 = "data/desconto_por_modalidade.png"
-OUT_7 = "data/distribuicao_tipo_objeto.png"
-OUT_8 = "data/previsao_ols_2026_2028.png"
+OUT_1 = "data/graficos/evolucao_valores.png"
+OUT_2 = "data/graficos/correlacao_ipca.png"
+OUT_3 = "data/graficos/padroes_orcamentarios.png"
+OUT_4 = "data/graficos/gastos_por_entidade.png"
+OUT_5 = "data/graficos/sazonalidade_valor_quantidade.png"
+OUT_6 = "data/graficos/desconto_por_modalidade.png"
+OUT_7 = "data/graficos/distribuicao_tipo_objeto.png"
+OUT_8 = "data/graficos/previsao_ols_2026_2028.png"
 
 AZUL     = "#1a6fbf"
 LARANJA  = "#e07b2a"
