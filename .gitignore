@@ -1,0 +1,28 @@
+# Ambiente virtual
+venv/
+.venv/
+env/
+ENV/
+
+# Bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Arquivos de cache do Python
+*.egg-info/
+dist/
+build/
+
+# Logs
+*.log
+
+# Jupyter (se usar)
+.ipynb_checkpoints/
+
+# VSCode (opcional)
+.vscode/
+
+# Sistema
+.DS_Store
+Thumbs.db

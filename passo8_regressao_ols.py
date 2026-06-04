@@ -3,6 +3,7 @@
 #
 # Usa as variáveis bem correlacionadas (|r| > 0.3) identificadas no Passo 6.
 # Remove variáveis que causam multicolinearidade (identidades matemáticas).
+# Remove variáveis com vazamento do alvo (transformações diretas de valorTotalVencedor).
 # ══════════════════════════════════════════════════════════════════════════════
 
 import pandas as pd
@@ -10,7 +11,7 @@ import numpy as np
 import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-INPUT_LICITACOES = "data/licitacoes_deflacionadas.csv"
+INPUT_LICITACOES  = "data/licitacoes_deflacionadas.csv"
 INPUT_CORRELACOES = "data/correlacoes.csv"
 OUTPUT_RESULTADO  = "data/ols_resultado.csv"
 OUTPUT_RESUMO     = "data/ols_resumo.txt"
@@ -44,43 +45,58 @@ for mod in top_modalidades:
 # ── SELECIONAR CANDIDATAS BEM CORRELACIONADAS (|r| > 0.3) ─────────────────────
 bem_corr = corr[corr["bem_correlacionada"] == "Sim ✅"]["variavel"].tolist()
 
+# ── VARIÁVEIS COM VAZAMENTO DO ALVO ───────────────────────────────────────────
+# São transformações diretas de valorTotalVencedor — inflam artificialmente o R²
+# e invalidam o modelo academicamente. Excluídas antes de qualquer seleção.
+VAZAMENTO = {
+    "logValorTotalVencedor",    # log do próprio alvo
+    "valorTotalVencedorReal",   # alvo ÷ índice (transformação linear direta)
+    "sqrtValorTotalVencedor",   # √alvo
+    "valorTotal_x_ipca",        # alvo × ipca
+    "valorTotal_squared",       # alvo²
+    "valorUnitario_x_qtd",      # unitário × qtd ≡ alvo (reconstrução direta)
+    "qtd_x_unitCorrigido",      # qtd × (unitário × índice) ≡ alvo corrigido
+    "unitVencedor_x_qtd_real",  # unitário × qtd ÷ índice ≡ alvo real
+}
+
 # ── REMOVER MULTICOLINEARIDADE ÓBVIA (identidades matemáticas) ────────────────
-# valorTotalVencedor ≈ valorUnitarioVencedor × quantidade  → remove quantidade e unitário juntos
-# valorTotalReferencia ≈ valorUnitarioReferencia × quantidade → idem
-# versões "Real" são transformações lineares diretas dos nominais → remove reais
-# economiaItem = valorTotalReferencia - valorTotalVencedor → colinear com referência
-# logValorTotalReferencia é transformação de valorTotalReferencia → mantém só log
-remover = {
+REMOVER = {
     "quantidade",                  # identidade com valorUnitarioVencedor
-    "valorUnitarioVencedor",       # identidade: total = unitario × qtd (mantemos log)
+    "valorUnitarioVencedor",       # identidade: total = unitario × qtd
     "valorTotalReferencia",        # identidade com logValorTotalReferencia
     "valorUnitarioReferencia",     # identidade com logValorUnitarioReferencia
-    "valorTotalVencedorReal",      # transformação linear direta do alvo
     "valorUnitarioVencedorReal",   # transformação linear de valorUnitarioVencedor
     "valorUnitarioReferenciaReal", # transformação linear de valorUnitarioReferencia
     "valorEstimadoReal",           # transformação linear de valorEstimado
     "valorHomologadoReal",         # transformação linear de valorHomologado
     "economiaItem",                # = valorTotalReferencia - alvo (vazamento)
     "razaoVencedorReferencia",     # derivada direta do alvo (vazamento)
-    # ── vazamentos adicionais identificados em execução ──
-    "logValorTotalVencedor",       # log do próprio alvo → vazamento direto
-    "logValorUnitarioRef",         # duplicata de logValorUnitarioReferencia (nome alternativo)
+    "logValorUnitarioRef",         # duplicata de logValorUnitarioReferencia
 }
 
-candidatas = [v for v in bem_corr if v in df.columns and v not in remover and v != alvo]
+# Une os dois conjuntos de exclusão
+excluir = VAZAMENTO | REMOVER
+
+candidatas = [
+    v for v in bem_corr
+    if v in df.columns and v not in excluir and v != alvo
+]
+
+print(f"\n⛔ Variáveis de vazamento bloqueadas ({len(VAZAMENTO)}):")
+for v in sorted(VAZAMENTO):
+    print(f"  {v}")
 
 # ── FALLBACK: se poucas variáveis passaram no filtro |r|>0.3, relaxa para |r|>0.1 ──
 if len(candidatas) < 3:
-    print(f"⚠️  Apenas {len(candidatas)} variável(is) com |r| > 0.3. Relaxando limiar para |r| > 0.1...")
+    print(f"\n⚠️  Apenas {len(candidatas)} variável(is) com |r| > 0.3. Relaxando limiar para |r| > 0.1...")
     variaveis_numericas = df.select_dtypes(include=[np.number]).columns.tolist()
     variaveis_candidatas_fallback = [
         v for v in variaveis_numericas
-        if v not in remover and v != alvo and v in df.columns
+        if v not in excluir and v != alvo and v in df.columns
     ]
     df_temp = df[[alvo] + variaveis_candidatas_fallback].dropna()
     correlacoes_fallback = df_temp.corr()[alvo].drop(alvo).abs()
     extras = correlacoes_fallback[correlacoes_fallback > 0.1].index.tolist()
-    # adiciona apenas as que ainda não estão em candidatas
     for v in extras:
         if v not in candidatas:
             candidatas.append(v)
@@ -98,7 +114,6 @@ X = df_model[candidatas].copy()
 Y = df_model[alvo]
 
 # ── REMOÇÃO ITERATIVA POR VIF (elimina multicolinearidade residual) ───────────
-# Remove a variável com maior VIF até todas ficarem abaixo de 10
 print('\n── Eliminação iterativa por VIF (limiar = 10) ──')
 while X.shape[1] >= 2:
     vif_iter = pd.Series(
@@ -119,24 +134,23 @@ X_const = sm.add_constant(X)
 # ── RODAR OLS ──────────────────────────────────────────────────────────────────
 modelo = sm.OLS(Y, X_const).fit()
 
-# ── VIF (Variance Inflation Factor) — detecta multicolinearidade residual ──────
-# VIF requer ao menos 2 variáveis preditoras para calcular correlação entre elas
+# ── VIF FINAL ──────────────────────────────────────────────────────────────────
 if X.shape[1] >= 2:
     vif_data = pd.DataFrame({
         "variavel": X.columns,
         "VIF": [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
     }).sort_values("VIF", ascending=False)
 else:
-    print("ℹ️  VIF não calculado: modelo com apenas 1 variável preditora (sem multicolinearidade possível).")
+    print("ℹ️  VIF não calculado: modelo com apenas 1 variável preditora.")
     vif_data = pd.DataFrame({"variavel": X.columns, "VIF": [float("nan")] * X.shape[1]})
 
 # ── MONTAR TABELA DE COEFICIENTES ─────────────────────────────────────────────
 coef_df = pd.DataFrame({
-    "variavel":    modelo.params.index,
-    "coeficiente": modelo.params.values.round(4),
-    "erro_padrao": modelo.bse.values.round(4),
-    "t_stat":      modelo.tvalues.values.round(4),
-    "p_valor":     modelo.pvalues.values.round(4),
+    "variavel":      modelo.params.index,
+    "coeficiente":   modelo.params.values.round(4),
+    "erro_padrao":   modelo.bse.values.round(4),
+    "t_stat":        modelo.tvalues.values.round(4),
+    "p_valor":       modelo.pvalues.values.round(4),
     "significativa": ["Sim ✅" if p < 0.05 else "Não ❌" for p in modelo.pvalues],
     "intervalo_inf": modelo.conf_int()[0].values.round(4),
     "intervalo_sup": modelo.conf_int()[1].values.round(4),
@@ -189,7 +203,7 @@ else:
     qualidade = "fraco — considere adicionar mais variáveis"
 resumo.append(f"  R² = {r2:.4f} → ajuste {qualidade}.")
 sig_count = (coef_df["p_valor"] < 0.05).sum() - 1  # desconta constante
-resumo.append(f"  {sig_count} de {len(candidatas)} variáveis são estatisticamente significativas (p < 0.05).")
+resumo.append(f"  {sig_count} de {len(X.columns)} variáveis são estatisticamente significativas (p < 0.05).")
 resumo.append("=" * 65)
 
 resumo_str = "\n".join(resumo)

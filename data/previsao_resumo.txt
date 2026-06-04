@@ -1,0 +1,54 @@
+=================================================================
+PREVISÃO OLS — INTERVALO FUTURO 2026–2028
+=================================================================
+Modelo base: R² = 0.8146 (81.5% da variação explicada)
+IPCA projetado: 2026=3.5%  2027=3.2%  2028=3.0%
+Referência histórica — ticket médio real 2025: R$ 81,292.48
+
+─────────────────────────────────────────────────────────────────
+RESULTADOS:
+─────────────────────────────────────────────────────────────────
+
+  Ano 2026:
+    Previsão pontual         : R$   122,884.08
+    IC confiança 95%         : [R$   121,212.39  ;  R$   124,555.77]
+    IP predição 95%          : [R$  -426,173.69  ;  R$   671,941.86]
+    Variação vs 2025         : +51.2%
+    IPCA projetado           : 3.5%
+
+  Ano 2027:
+    Previsão pontual         : R$   134,494.86
+    IC confiança 95%         : [R$   132,817.47  ;  R$   136,172.25]
+    IP predição 95%          : [R$  -414,562.93  ;  R$   683,552.66]
+    Variação vs 2025         : +65.4%
+    IPCA projetado           : 3.25%
+
+  Ano 2028:
+    Previsão pontual         : R$   146,105.64
+    IC confiança 95%         : [R$   144,421.87  ;  R$   147,789.40]
+    IP predição 95%          : [R$  -402,952.18  ;  R$   695,163.45]
+    Variação vs 2025         : +79.7%
+    IPCA projetado           : 3.0%
+
+─────────────────────────────────────────────────────────────────
+INTERPRETAÇÃO PARA O TRABALHO:
+─────────────────────────────────────────────────────────────────
+
+  O modelo OLS (R²=0.8146) foi utilizado para projetar o valor médio
+  por item licitado nos anos de 2026 a 2028, considerando IPCA projetado
+  pelo Banco Central (meta de 3.5% a 3.0% ao ano).
+
+  Para 2026, a previsão pontual é de R$ 122,884.08 por item,
+  com intervalo de confiança de 95% entre R$ 121,212.39
+  e R$ 124,555.77.
+
+  Para 2028, projeta-se R$ 146,105.64 por item
+  (IC 95%: R$ 144,421.87 a R$ 147,789.40),
+  indicando tendência de crescimento real nos valores licitados.
+
+  Diferença entre intervalo de confiança e intervalo de predição:
+  - IC de confiança: incerteza sobre o VALOR MÉDIO esperado
+  - IP de predição : incerteza sobre um ITEM INDIVIDUAL futuro
+    (sempre mais amplo, pois inclui variabilidade individual)
+
+=================================================================

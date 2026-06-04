@@ -1,0 +1,83 @@
+=================================================================
+ESTIMATIVA PONTUAL E INTERVALAR — valorTotalVencedor
+=================================================================
+
+Variável analisada : valorTotalVencedor
+Tamanho da população (N): 110.407
+
+─────────────────────────────────────────────────────────────────
+1. ESTIMATIVA PONTUAL
+─────────────────────────────────────────────────────────────────
+
+  A estimativa pontual usa a média amostral (x̄) como estimador
+  do parâmetro populacional µ (valor médio verdadeiro de todos
+  os itens licitados).
+
+  Estimativa pontual geral (2015–2025):
+    x̄  = R$ 30.286.38
+    Md = R$ 899.79  (mediana — menos sensível a outliers)
+    s  = R$ 651.308.91  (desvio padrão amostral)
+    CV = 2150.5%  (coeficiente de variação — indica alta dispersão)
+
+  Interpretação:
+  O CV de 2151% indica que a base é altamente heterogênea —
+  itens de poucos reais convivem com contratos de centenas de
+  milhares. A mediana é uma estimativa pontual mais robusta
+  para planejamento neste caso.
+
+─────────────────────────────────────────────────────────────────
+2. ESTIMATIVA INTERVALAR
+─────────────────────────────────────────────────────────────────
+
+  O intervalo de confiança (IC) fornece uma faixa de valores
+  dentro da qual o parâmetro µ está com determinada probabilidade.
+
+  Como n = 110.407 > 30. usa-se a distribuição normal (z).
+
+  Para o TOTAL (2015–2025). os dados cobrem toda a população —
+  o FPC não é aplicado. pois com n = N o fator seria zero.
+  O IC reflete a variabilidade interna da série histórica.
+
+  Para anos individuais. o FPC é aplicado quando n/N > 5%.
+  reduzindo o erro padrão proporcionalmente ao peso da amostra.
+
+  Resultados para a base completa:
+
+  IC 90%  (z = 1.6449):
+    [R$    27.062.23  ;  R$    33.510.54]
+    Margem de erro: R$ 3.224.16
+
+  IC 95%  (z = 1.9600):
+    [R$    26.444.56  ;  R$    34.128.20]
+    Margem de erro: R$ 3.841.82
+
+  IC 99%  (z = 2.5758):
+    [R$    25.237.38  ;  R$    35.335.39]
+    Margem de erro: R$ 5.049.00
+
+  Interpretação do IC 95%:
+  Com 95% de confiança. o valor médio real por item licitado
+  pela Prefeitura de Criciúma está entre
+  R$ 26.444.56 e R$ 34.128.20.
+  Isso significa que se repetíssemos a coleta de dados 100 vezes.
+  em 95 delas o verdadeiro µ estaria dentro deste intervalo.
+
+─────────────────────────────────────────────────────────────────
+3. DIFERENÇA ENTRE ESTIMATIVA PONTUAL E INTERVALAR
+─────────────────────────────────────────────────────────────────
+
+  Estimativa PONTUAL:
+    → Fornece um único valor: x̄ = R$ 30.286.38
+    → Vantagem: simples e direta
+    → Desvantagem: não informa a incerteza do estimador
+
+  Estimativa INTERVALAR (IC 95%):
+    → Fornece uma faixa: [R$ 26.444.56 ; R$ 34.128.20]
+    → Vantagem: quantifica a incerteza da estimativa
+    → Desvantagem: mais complexa de comunicar
+
+  Para planejamento orçamentário. recomenda-se usar o
+  LIMITE SUPERIOR do IC 95% como valor de referência conservador.
+  garantindo cobertura mesmo nos cenários acima da média.
+
+=================================================================
